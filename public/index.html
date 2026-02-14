@@ -1079,21 +1079,71 @@
 
     async function toggle(date) {
       if (!currentUser) return;
-      const res = await fetch("/api/toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: currentUser, date }),
-      });
-      const data = await res.json();
 
+      // Save current state for rollback
       if (!allData[currentUser]) allData[currentUser] = {};
-      if (data.status) {
-        allData[currentUser][date] = data.status;
+      const previousState = allData[currentUser][date] || null;
+
+      // Optimistically update UI: cycle through states (null → confirmed → tentative → null)
+      let newState;
+      if (!previousState) {
+        newState = 'confirmed';
+      } else if (previousState === 'confirmed') {
+        newState = 'tentative';
+      } else {
+        newState = null;
+      }
+
+      // Update local state immediately
+      if (newState) {
+        allData[currentUser][date] = newState;
       } else {
         delete allData[currentUser][date];
         if (Object.keys(allData[currentUser]).length === 0) delete allData[currentUser];
       }
+
+      // Render UI immediately for instant feedback
       renderAll();
+
+      // Make API call in background
+      try {
+        const res = await fetch("/api/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: currentUser, date }),
+        });
+
+        if (!res.ok) {
+          throw new Error('API request failed');
+        }
+
+        const data = await res.json();
+
+        // Sync with server response (in case server has different state)
+        if (!allData[currentUser]) allData[currentUser] = {};
+        if (data.status) {
+          allData[currentUser][date] = data.status;
+        } else {
+          delete allData[currentUser][date];
+          if (Object.keys(allData[currentUser]).length === 0) delete allData[currentUser];
+        }
+        renderAll();
+      } catch (error) {
+        console.error('Failed to update availability:', error);
+
+        // Revert to previous state on error
+        if (!allData[currentUser]) allData[currentUser] = {};
+        if (previousState) {
+          allData[currentUser][date] = previousState;
+        } else {
+          delete allData[currentUser][date];
+          if (Object.keys(allData[currentUser]).length === 0) delete allData[currentUser];
+        }
+        renderAll();
+
+        // Show error to user
+        alert('Failed to save your availability. Please try again.');
+      }
     }
 
     function renderAll() {
