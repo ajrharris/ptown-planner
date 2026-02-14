@@ -237,6 +237,51 @@
       color: var(--atlantic);
     }
 
+    /* ── Instruction Banner ── */
+    .instruction-banner {
+      position: relative;
+      background: linear-gradient(135deg, var(--atlantic) 0%, var(--atlantic-light) 100%);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      overflow: hidden;
+      animation: fadeIn 0.4s ease;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .instruction-banner::before {
+      content: '↓';
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2rem;
+      color: rgba(255,255,255,0.2);
+      animation: bounce 2s ease infinite;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(-50%); }
+      40% { transform: translateY(-40%); }
+      60% { transform: translateY(-45%); }
+    }
+
+    .instruction-banner h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--white);
+      margin-bottom: 0.4rem;
+    }
+
+    .instruction-banner p {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.5;
+      margin: 0;
+    }
+
     /* ── Best Banner ── */
     .best-banner {
       position: relative;
@@ -683,6 +728,23 @@
         font-size: 0.8rem;
       }
 
+      .instruction-banner {
+        padding: 1.1rem 1.5rem;
+      }
+
+      .instruction-banner::before {
+        right: 1.25rem;
+        font-size: 1.75rem;
+      }
+
+      .instruction-banner h3 {
+        font-size: 1rem;
+      }
+
+      .instruction-banner p {
+        font-size: 0.82rem;
+      }
+
       .best-banner {
         padding: 1.25rem 1.5rem;
       }
@@ -827,6 +889,11 @@
       <div class="people-tags" id="people-tags"></div>
     </div>
 
+    <div id="instruction-banner" class="instruction-banner">
+      <h3>Pick your dates</h3>
+      <p>Click on the dates in the calendar below to mark when you're available. Click once for confirmed (✓), twice for tentative (?), or three times to clear.</p>
+    </div>
+
     <div id="best-banner" class="best-banner">
       <h3>Best Weekends</h3>
       <div class="best-list" id="best-list"></div>
@@ -952,8 +1019,10 @@
     const myGrid = document.getElementById("my-grid");
     const myGridBody = document.getElementById("my-grid-body");
     const summaryGridBody = document.getElementById("summary-grid-body");
+    const instructionBanner = document.getElementById("instruction-banner");
     const bestBanner = document.getElementById("best-banner");
     const bestList = document.getElementById("best-list");
+    const myTab = document.querySelector(".tab[data-tab='my']");
 
     // Tab switching
     document.querySelectorAll(".tab").forEach((tab) => {
@@ -1033,13 +1102,23 @@
       if (!currentUser) {
         emptyState.style.display = "";
         myGrid.style.display = "none";
+        instructionBanner.style.display = "none";
+        myTab.textContent = "My Availability";
         return;
       }
       emptyState.style.display = "none";
       myGrid.style.display = "";
       nameInput.value = currentUser;
 
+      // Update tab text with current user's name
+      myTab.textContent = currentUser + "'s Availability";
+
       const myAvailability = allData[currentUser] || {};
+
+      // Show instruction banner if user has no availability set yet
+      const hasAvailability = Object.keys(myAvailability).length > 0;
+      instructionBanner.style.display = hasAvailability ? "none" : "block";
+
       myGridBody.innerHTML = "";
 
       let lastMonth = "";
