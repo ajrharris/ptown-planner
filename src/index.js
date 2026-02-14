@@ -36,12 +36,12 @@ function json(data, status = 200) {
 
 async function handleGetAvailability(db) {
   const { results } = await db
-    .prepare("SELECT name, date FROM availability ORDER BY name, date")
+    .prepare("SELECT name, date, status FROM availability ORDER BY name, date")
     .all();
   const grouped = {};
   for (const row of results) {
-    if (!grouped[row.name]) grouped[row.name] = [];
-    grouped[row.name].push(row.date);
+    if (!grouped[row.name]) grouped[row.name] = {};
+    grouped[row.name][row.date] = row.status || 'confirmed';
   }
   return json(grouped);
 }
@@ -65,28 +65,40 @@ async function handleToggle(request, db) {
   }
 
   const existing = await db
-    .prepare("SELECT 1 FROM availability WHERE name = ? AND date = ?")
+    .prepare("SELECT status FROM availability WHERE name = ? AND date = ?")
     .bind(trimmedName, date)
     .first();
 
-  if (existing) {
+  let newStatus;
+  if (!existing) {
+    // Not available -> Confirmed
+    newStatus = 'confirmed';
+    await db
+      .prepare("INSERT INTO availability (name, date, status) VALUES (?, ?, ?)")
+      .bind(trimmedName, date, newStatus)
+      .run();
+  } else if (existing.status === 'confirmed') {
+    // Confirmed -> Tentative
+    newStatus = 'tentative';
+    await db
+      .prepare("UPDATE availability SET status = ? WHERE name = ? AND date = ?")
+      .bind(newStatus, trimmedName, date)
+      .run();
+  } else {
+    // Tentative -> Not available (delete)
+    newStatus = null;
     await db
       .prepare("DELETE FROM availability WHERE name = ? AND date = ?")
       .bind(trimmedName, date)
       .run();
-    return json({ toggled: false });
-  } else {
-    await db
-      .prepare("INSERT OR IGNORE INTO availability (name, date) VALUES (?, ?)")
-      .bind(trimmedName, date)
-      .run();
-    return json({ toggled: true });
   }
+
+  return json({ status: newStatus });
 }
 
 async function handleSetAvailability(request, db) {
   const body = await request.json();
-  const { name, dates } = body;
+  const { name, availability } = body;
   if (!name) {
     return json({ error: "name required" }, 400);
   }
@@ -98,11 +110,11 @@ async function handleSetAvailability(request, db) {
   const stmts = [
     db.prepare("DELETE FROM availability WHERE name = ?").bind(trimmedName),
   ];
-  for (const d of dates || []) {
+  for (const [date, status] of Object.entries(availability || {})) {
     stmts.push(
       db
-        .prepare("INSERT INTO availability (name, date) VALUES (?, ?)")
-        .bind(trimmedName, d)
+        .prepare("INSERT INTO availability (name, date, status) VALUES (?, ?, ?)")
+        .bind(trimmedName, date, status)
     );
   }
   await db.batch(stmts);

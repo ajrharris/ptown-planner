@@ -312,12 +312,53 @@
       border-color: var(--sand-mid);
     }
 
+    /* ── Legend ── */
+    .legend {
+      background: var(--card);
+      border: 1px solid var(--sand-mid);
+      border-top: none;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-mid);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-box {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid;
+    }
+
+    .legend-box.available {
+      background: var(--coral);
+      border-color: var(--coral);
+    }
+
+    .legend-box.tentative {
+      background: var(--sunset-gold);
+      border-color: var(--sunset-gold);
+    }
+
+    .legend-box.not-available {
+      background: var(--sand);
+      border-color: var(--sand-dark);
+    }
+
     /* ── Grid Wrapper ── */
     .grid-wrapper {
       background: var(--card);
       border: 1px solid var(--sand-mid);
       border-top: none;
-      border-radius: 0 var(--radius) var(--radius) var(--radius);
+      border-radius: 0 0 var(--radius) var(--radius);
       overflow-x: auto;
     }
 
@@ -422,6 +463,21 @@
       border-color: var(--coral-soft);
       transform: translateY(-1px);
       box-shadow: 0 4px 14px rgba(212, 101, 74, 0.3);
+    }
+
+    .day-cell.tentative {
+      background: var(--sunset-gold);
+      color: var(--white);
+      border-color: var(--sunset-gold);
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(232, 168, 76, 0.2);
+    }
+
+    .day-cell.tentative:hover {
+      background: #f0b960;
+      border-color: #f0b960;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(232, 168, 76, 0.25);
     }
 
     .day-cell.no-user {
@@ -650,6 +706,22 @@
         text-align: center;
       }
 
+      .legend {
+        padding: 0.65rem 1rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.7rem;
+      }
+
+      .legend-item {
+        gap: 0.35rem;
+      }
+
+      .legend-box {
+        width: 16px;
+        height: 16px;
+      }
+
       .grid-wrapper {
         border-radius: 0 0 var(--radius) var(--radius);
         -webkit-overflow-scrolling: touch;
@@ -693,6 +765,10 @@
 
       .day-cell.available:active {
         background: var(--coral-soft);
+      }
+
+      .day-cell.tentative:active {
+        background: #f0b960;
       }
 
       /* Hide tooltips on mobile (touch doesn't have hover) */
@@ -759,6 +835,22 @@
     <div class="tabs">
       <button class="tab active" data-tab="my">My Availability</button>
       <button class="tab" data-tab="summary">Group Summary</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-box available"></div>
+        <span>Confirmed (✓)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box tentative"></div>
+        <span>Tentative (?)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box not-available"></div>
+        <span>Not available</span>
+      </div>
+      <span style="margin-left: auto; font-style: italic; opacity: 0.7;">Click cells to cycle</span>
     </div>
 
     <div class="grid-wrapper" id="my-view">
@@ -903,12 +995,12 @@
       });
       const data = await res.json();
 
-      if (!allData[currentUser]) allData[currentUser] = [];
-      if (data.toggled) {
-        allData[currentUser].push(date);
+      if (!allData[currentUser]) allData[currentUser] = {};
+      if (data.status) {
+        allData[currentUser][date] = data.status;
       } else {
-        allData[currentUser] = allData[currentUser].filter((d) => d !== date);
-        if (allData[currentUser].length === 0) delete allData[currentUser];
+        delete allData[currentUser][date];
+        if (Object.keys(allData[currentUser]).length === 0) delete allData[currentUser];
       }
       renderAll();
     }
@@ -947,7 +1039,7 @@
       myGrid.style.display = "";
       nameInput.value = currentUser;
 
-      const myDates = new Set(allData[currentUser] || []);
+      const myAvailability = allData[currentUser] || {};
       myGridBody.innerHTML = "";
 
       let lastMonth = "";
@@ -975,9 +1067,20 @@
         for (const day of weekend.days) {
           const td = document.createElement("td");
           const cell = document.createElement("div");
-          const isAvail = myDates.has(day.date);
-          cell.className = "day-cell" + (isAvail ? " available" : "");
-          cell.textContent = isAvail ? "\u2713" : day.label;
+          const status = myAvailability[day.date];
+          let className = "day-cell";
+          let text = day.label;
+
+          if (status === 'confirmed') {
+            className += " available";
+            text = "\u2713";
+          } else if (status === 'tentative') {
+            className += " tentative";
+            text = "?";
+          }
+
+          cell.className = className;
+          cell.textContent = text;
           cell.addEventListener("click", () => toggle(day.date));
           td.appendChild(cell);
           tr.appendChild(td);
@@ -998,19 +1101,32 @@
         let weekendTotal = 0;
         const dayCounts = [];
         for (const day of weekend.days) {
-          let count = 0;
-          const whoList = [];
+          let confirmedCount = 0;
+          let tentativeCount = 0;
+          const confirmedList = [];
+          const tentativeList = [];
           for (const p of people) {
-            if (allData[p].includes(day.date)) {
-              count++;
-              whoList.push(p);
+            const status = allData[p][day.date];
+            if (status === 'confirmed') {
+              confirmedCount++;
+              confirmedList.push(p);
+            } else if (status === 'tentative') {
+              tentativeCount++;
+              tentativeList.push(p);
             }
           }
-          dayCounts.push({ count, who: whoList });
+          const totalCount = confirmedCount + tentativeCount;
+          dayCounts.push({
+            confirmedCount,
+            tentativeCount,
+            totalCount,
+            confirmedList,
+            tentativeList
+          });
           if (day.dayName === "Sat" || day.dayName === "Sun") {
-            weekendTotal += count;
+            weekendTotal += confirmedCount; // Only count confirmed for best weekend
           }
-          if (count > maxCount) maxCount = count;
+          if (totalCount > maxCount) maxCount = totalCount;
         }
         weekendScores.push({ weekend, dayCounts, score: weekendTotal });
       }
@@ -1044,22 +1160,38 @@
 
         for (let i = 0; i < weekend.days.length; i++) {
           const day = weekend.days[i];
-          const { count, who } = dayCounts[i];
+          const { confirmedCount, tentativeCount, totalCount, confirmedList, tentativeList } = dayCounts[i];
           const td = document.createElement("td");
           const cell = document.createElement("div");
 
           const isSatSun = day.dayName === "Sat" || day.dayName === "Sun";
-          const heatClass = getHeatClass(count, totalPeople);
-          const isBestCell = isBest && isSatSun && count === totalPeople && totalPeople > 0;
+          const heatClass = getHeatClass(confirmedCount, totalPeople);
+          const isBestCell = isBest && isSatSun && confirmedCount === totalPeople && totalPeople > 0;
 
-          cell.className = "day-cell " + heatClass + (count > 0 ? " has-people" : "") +
+          cell.className = "day-cell " + heatClass + (totalCount > 0 ? " has-people" : "") +
             (isBestCell ? " best-weekend" : "");
-          cell.textContent = count > 0 ? count + "/" + totalPeople : "\u2014";
 
-          if (who.length > 0) {
+          if (totalCount > 0) {
+            if (tentativeCount > 0) {
+              cell.textContent = confirmedCount + "+" + tentativeCount + "/" + totalPeople;
+            } else {
+              cell.textContent = confirmedCount + "/" + totalPeople;
+            }
+          } else {
+            cell.textContent = "\u2014";
+          }
+
+          if (totalCount > 0) {
             const tooltip = document.createElement("div");
             tooltip.className = "tooltip";
-            tooltip.textContent = who.join(", ");
+            const parts = [];
+            if (confirmedList.length > 0) {
+              parts.push("\u2713 " + confirmedList.join(", "));
+            }
+            if (tentativeList.length > 0) {
+              parts.push("? " + tentativeList.join(", "));
+            }
+            tooltip.textContent = parts.join(" | ");
             cell.appendChild(tooltip);
           }
 
@@ -1096,8 +1228,10 @@
         let bothCount = 0;
         const bothWho = [];
         for (const p of people) {
-          const dates = allData[p];
-          if (dates.includes(satDate) && dates.includes(sunDate)) {
+          const availability = allData[p];
+          const satStatus = availability[satDate];
+          const sunStatus = availability[sunDate];
+          if (satStatus === 'confirmed' && sunStatus === 'confirmed') {
             bothCount++;
             bothWho.push(p);
           }
@@ -1107,8 +1241,8 @@
             label: weekend.label,
             count: bothCount,
             who: bothWho,
-            fri: people.filter((p) => allData[p].includes(weekend.days[0].date)).length,
-            mon: people.filter((p) => allData[p].includes(weekend.days[3].date)).length,
+            fri: people.filter((p) => allData[p][weekend.days[0].date] === 'confirmed').length,
+            mon: people.filter((p) => allData[p][weekend.days[3].date] === 'confirmed').length,
           });
         }
       }
