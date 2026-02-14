@@ -481,13 +481,13 @@
       letter-spacing: 0.1px;
     }
 
-    .day-cell:not(.available) {
+    .availability-grid:not(.summary-grid) .day-cell:not(.available):not(.tentative) {
       background: var(--sand);
       color: var(--driftwood);
       border-color: transparent;
     }
 
-    .day-cell:not(.available):hover {
+    .availability-grid:not(.summary-grid) .day-cell:not(.available):not(.tentative):hover {
       background: var(--sand-mid);
       border-color: var(--sand-dark);
       color: var(--text-mid);
@@ -904,10 +904,10 @@
       <button class="tab" data-tab="summary">Group Summary</button>
     </div>
 
-    <div class="legend">
+    <div class="legend" id="my-legend">
       <div class="legend-item">
         <div class="legend-box available"></div>
-        <span>Confirmed (✓)</span>
+        <span>Available (✓)</span>
       </div>
       <div class="legend-item">
         <div class="legend-box tentative"></div>
@@ -918,6 +918,26 @@
         <span>Not available</span>
       </div>
       <span style="margin-left: auto; font-style: italic; opacity: 0.7;">Click cells to cycle</span>
+    </div>
+
+    <div class="legend" id="summary-legend" style="display: none;">
+      <div class="legend-item">
+        <div class="legend-box best-weekend"></div>
+        <span>Everyone available</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box heat-5"></div>
+        <span>Everyone available or tentatively available</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box heat-4"></div>
+        <span>Some available</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box heat-0"></div>
+        <span>No one available</span>
+      </div>
+      <span style="margin-left: auto; font-style: italic; opacity: 0.7;">Format: confirmed+tentative/total</span>
     </div>
 
     <div class="grid-wrapper" id="my-view">
@@ -1032,6 +1052,8 @@
         const which = tab.dataset.tab;
         document.getElementById("my-view").style.display = which === "my" ? "" : "none";
         document.getElementById("summary-view").style.display = which === "summary" ? "" : "none";
+        document.getElementById("my-legend").style.display = which === "my" ? "" : "none";
+        document.getElementById("summary-legend").style.display = which === "summary" ? "" : "none";
       });
     });
 
@@ -1244,7 +1266,7 @@
           const cell = document.createElement("div");
 
           const isSatSun = day.dayName === "Sat" || day.dayName === "Sun";
-          const heatClass = getHeatClass(confirmedCount, totalPeople);
+          const heatClass = getHeatClass(confirmedCount, tentativeCount, totalPeople);
           const isBestCell = isBest && isSatSun && confirmedCount === totalPeople && totalPeople > 0;
 
           cell.className = "day-cell " + heatClass + (totalCount > 0 ? " has-people" : "") +
@@ -1281,14 +1303,18 @@
       }
     }
 
-    function getHeatClass(count, total) {
-      if (count === 0 || total === 0) return "heat-0";
-      const ratio = count / total;
-      if (ratio >= 1) return "heat-5";
-      if (ratio >= 0.75) return "heat-4";
-      if (ratio >= 0.5) return "heat-3";
-      if (ratio >= 0.25) return "heat-2";
-      return "heat-1";
+    function getHeatClass(confirmedCount, tentativeCount, totalPeople) {
+      const totalCount = confirmedCount + tentativeCount;
+
+      // 4-state system matching the legend:
+      if (totalCount === 0) {
+        return "heat-0"; // No one available → Sand
+      }
+      if (totalCount === totalPeople) {
+        return "heat-5"; // Everyone available or tentatively available → Coral
+      }
+      // Some available (not everyone) → Coral-glow
+      return "heat-4";
     }
 
     function renderBestBanner() {
