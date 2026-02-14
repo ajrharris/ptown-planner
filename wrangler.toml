@@ -10,4 +10,4 @@ fallthrough = false
 [[d1_databases]]
 binding = "DB"
 database_name = "ptown-planner-db"
-database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+database_id = "7a3c4ca6-e772-4fc3-86c4-df3b478d17c6"
