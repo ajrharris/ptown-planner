@@ -2,7 +2,7 @@ import HTML from "../public/index.html";
 
 const PASSWORD = "ptown2026"; // Case-insensitive
 const AUTH_COOKIE_NAME = "ptown_auth";
-const AUTH_TOKEN = "authenticated_ptown_2026";
+const AUTH_TOKEN = "ptown_auth_token_2026";
 
 export default {
   async fetch(request, env) {
