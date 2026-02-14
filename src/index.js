@@ -1,10 +1,24 @@
 import HTML from "../public/index.html";
 
+const PASSWORD = "ptown2026"; // Case-insensitive
+const AUTH_COOKIE_NAME = "ptown_auth";
+const AUTH_TOKEN = "authenticated_ptown_2026";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
     const method = request.method;
+
+    // Login endpoint - no auth required
+    if (pathname === "/api/login" && method === "POST") {
+      return handleLogin(request);
+    }
+
+    // Check authentication for all other routes
+    if (!isAuthenticated(request)) {
+      return serveLoginPage();
+    }
 
     // API routes
     if (pathname === "/api/availability" && method === "GET") {
@@ -31,6 +45,262 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function isAuthenticated(request) {
+  const cookieHeader = request.headers.get("Cookie");
+  if (!cookieHeader) return false;
+
+  const cookies = cookieHeader.split(";").map(c => c.trim());
+  for (const cookie of cookies) {
+    const [name, value] = cookie.split("=");
+    if (name === AUTH_COOKIE_NAME && value === AUTH_TOKEN) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function handleLogin(request) {
+  try {
+    const body = await request.json();
+    const { password } = body;
+
+    if (password && password.toLowerCase() === PASSWORD) {
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": `${AUTH_COOKIE_NAME}=${AUTH_TOKEN}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`,
+        },
+      });
+    }
+
+    return json({ success: false, error: "Invalid password" }, 401);
+  } catch (e) {
+    return json({ success: false, error: "Invalid request" }, 400);
+  }
+}
+
+function serveLoginPage() {
+  const loginHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Provincetown Trip Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0c1d36;
+      --navy-mid: #162d4f;
+      --atlantic: #1e4976;
+      --atlantic-light: #2a6cb0;
+      --sand: #f4ede4;
+      --sand-mid: #ebe2d5;
+      --sand-dark: #d9cebf;
+      --coral: #d4654a;
+      --coral-soft: #e8826b;
+      --coral-glow: #f4a08c;
+      --text: #1a1a1a;
+      --text-mid: #4a4540;
+      --white: #ffffff;
+      --card: #fffcf8;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(160deg, var(--navy) 0%, var(--atlantic) 45%, var(--coral) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .login-container {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 3rem 2.5rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+
+    .login-header h1 em {
+      font-style: italic;
+      color: var(--coral);
+    }
+
+    .login-header p {
+      font-size: 0.9rem;
+      color: var(--text-mid);
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-mid);
+      letter-spacing: 0.2px;
+    }
+
+    .form-group input {
+      padding: 0.85rem 1.1rem;
+      border: 1.5px solid var(--sand-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      background: var(--white);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--atlantic-light);
+    }
+
+    .login-button {
+      padding: 0.9rem 1.5rem;
+      background: var(--navy);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.3px;
+      margin-top: 0.5rem;
+    }
+
+    .login-button:hover {
+      background: var(--atlantic);
+    }
+
+    .login-button:disabled {
+      background: var(--sand-dark);
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      color: var(--coral);
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+      margin-top: -0.5rem;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    @media (max-width: 500px) {
+      .login-container {
+        padding: 2rem 1.5rem;
+      }
+
+      .login-header h1 {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <h1>Provincetown<br><em>Trip Planner</em></h1>
+      <p>Please enter the password to continue</p>
+    </div>
+    <form class="login-form" id="loginForm">
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="off" autofocus>
+      </div>
+      <div class="error-message" id="errorMessage">Incorrect password. Please try again.</div>
+      <button type="submit" class="login-button" id="loginButton">Enter</button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const passwordInput = document.getElementById('password');
+    const loginButton = document.getElementById('loginButton');
+    const errorMessage = document.getElementById('errorMessage');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const password = passwordInput.value;
+      errorMessage.classList.remove('show');
+      loginButton.disabled = true;
+      loginButton.textContent = 'Checking...';
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          window.location.href = '/';
+        } else {
+          errorMessage.classList.add('show');
+          passwordInput.value = '';
+          passwordInput.focus();
+        }
+      } catch (error) {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.classList.add('show');
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = 'Enter';
+      }
+    });
+  </script>
+</body>
+</html>`;
+
+  return new Response(loginHTML, {
+    headers: { "Content-Type": "text/html;charset=UTF-8" },
   });
 }
 
