@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provincetown Trip Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0c1d36;
+      --navy-mid: #162d4f;
+      --atlantic: #1e4976;
+      --atlantic-light: #2a6cb0;
+      --sand: #f4ede4;
+      --sand-mid: #ebe2d5;
+      --sand-dark: #d9cebf;
+      --driftwood: #b8a994;
+      --coral: #d4654a;
+      --coral-soft: #e8826b;
+      --coral-glow: #f4a08c;
+      --sunset-gold: #e8a84c;
+      --seafoam: #4aada0;
+      --seafoam-light: #6fc4b8;
+      --text: #1a1a1a;
+      --text-mid: #4a4540;
+      --text-muted: #8a8279;
+      --white: #ffffff;
+      --card: #fffcf8;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--sand);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Hero Header ── */
+    .hero {
+      position: relative;
+      background: linear-gradient(160deg, var(--navy) 0%, var(--atlantic) 45%, var(--coral) 100%);
+      padding: 3rem 2rem 4.5rem;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .hero-subtitle {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--coral-glow);
+      margin-bottom: 0.75rem;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 400;
+      color: var(--white);
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.1s forwards;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--coral-glow);
+    }
+
+    .hero-date {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      font-weight: 300;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.2s forwards;
+    }
+
+    /* Wave divider */
+    .wave-divider {
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      overflow: hidden;
+      line-height: 0;
+    }
+
+    .wave-divider svg {
+      display: block;
+      width: 100%;
+      height: 40px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Container ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+    }
+
+    /* ── Name Section ── */
+    .name-section {
+      background: var(--card);
+      border: 1px solid var(--sand-mid);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeUp 0.5s ease 0.3s forwards;
+    }
+
+    .name-section label {
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: var(--text-mid);
+      letter-spacing: 0.2px;
+    }
+
+    .name-input-group {
+      display: flex;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    .name-input-group input {
+      padding: 0.55rem 0.85rem;
+      border: 1.5px solid var(--sand-dark);
+      border-right: none;
+      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      width: 190px;
+      background: var(--white);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .name-input-group input::placeholder {
+      color: var(--driftwood);
+    }
+
+    .name-input-group input:focus {
+      outline: none;
+      border-color: var(--atlantic-light);
+    }
+
+    .name-input-group button {
+      padding: 0.55rem 1.1rem;
+      background: var(--navy);
+      color: var(--white);
+      border: 1.5px solid var(--navy);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.3px;
+    }
+
+    .name-input-group button:hover {
+      background: var(--atlantic);
+      border-color: var(--atlantic);
+    }
+
+    .people-tags {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .person-tag {
+      padding: 0.3rem 0.7rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid var(--sand-dark);
+      background: transparent;
+      color: var(--text-mid);
+      transition: all 0.25s ease;
+      letter-spacing: 0.2px;
+    }
+
+    .person-tag.active {
+      background: var(--navy);
+      color: var(--white);
+      border-color: var(--navy);
+    }
+
+    .person-tag:hover:not(.active) {
+      border-color: var(--atlantic-light);
+      color: var(--atlantic);
+    }
+
+    /* ── Best Banner ── */
+    .best-banner {
+      position: relative;
+      background: var(--navy);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      overflow: hidden;
+    }
+
+    .best-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 200px;
+      height: 100%;
+      background: linear-gradient(135deg, transparent 0%, var(--coral) 100%);
+      opacity: 0.15;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .best-banner h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--coral-glow);
+      margin-bottom: 0.6rem;
+      position: relative;
+    }
+
+    .best-banner .best-list {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .best-banner .best-list strong {
+      color: var(--white);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 0;
+      opacity: 0;
+      animation: fadeUp 0.5s ease 0.4s forwards;
+    }
+
+    .tab {
+      padding: 0.65rem 1.5rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: var(--sand-mid);
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      letter-spacing: 0.3px;
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--text-mid);
+      background: var(--sand-dark);
+    }
+
+    .tab.active {
+      background: var(--card);
+      color: var(--text);
+      border-color: var(--sand-mid);
+    }
+
+    /* ── Grid Wrapper ── */
+    .grid-wrapper {
+      background: var(--card);
+      border: 1px solid var(--sand-mid);
+      border-top: none;
+      border-radius: 0 var(--radius) var(--radius) var(--radius);
+      overflow-x: auto;
+      opacity: 0;
+      animation: fadeUp 0.5s ease 0.45s forwards;
+    }
+
+    .availability-grid {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+    }
+
+    .availability-grid thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .availability-grid th {
+      padding: 0.85rem 0.5rem;
+      text-align: center;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--driftwood);
+      background: var(--card);
+      border-bottom: 1.5px solid var(--sand-mid);
+    }
+
+    .availability-grid th:first-child {
+      text-align: left;
+      padding-left: 1.25rem;
+      min-width: 135px;
+    }
+
+    .availability-grid td {
+      padding: 0.3rem;
+      text-align: center;
+      border-bottom: 1px solid var(--sand);
+    }
+
+    .availability-grid td:first-child {
+      text-align: left;
+      padding: 0.65rem 1.25rem;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: var(--text-mid);
+      white-space: nowrap;
+      letter-spacing: -0.1px;
+    }
+
+    .availability-grid tr:last-child td { border-bottom: none; }
+
+    .availability-grid tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    .availability-grid tbody tr:hover {
+      background: rgba(244, 237, 228, 0.35);
+    }
+
+    /* ── Day Cells ── */
+    .day-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      font-size: 0.78rem;
+      font-weight: 500;
+      border: 1.5px solid transparent;
+      user-select: none;
+      position: relative;
+      letter-spacing: 0.1px;
+    }
+
+    .day-cell:not(.available) {
+      background: var(--sand);
+      color: var(--driftwood);
+      border-color: transparent;
+    }
+
+    .day-cell:not(.available):hover {
+      background: var(--sand-mid);
+      border-color: var(--sand-dark);
+      color: var(--text-mid);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+    }
+
+    .day-cell.available {
+      background: var(--coral);
+      color: var(--white);
+      border-color: var(--coral);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(212, 101, 74, 0.25);
+    }
+
+    .day-cell.available:hover {
+      background: var(--coral-soft);
+      border-color: var(--coral-soft);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(212, 101, 74, 0.3);
+    }
+
+    .day-cell.no-user {
+      cursor: default;
+      opacity: 0.4;
+    }
+
+    .day-cell.no-user:hover {
+      transform: none;
+      box-shadow: none;
+      background: var(--sand);
+      border-color: transparent;
+    }
+
+    /* ── Summary Heat ── */
+    .summary-grid .day-cell {
+      cursor: default;
+    }
+
+    .summary-grid .day-cell:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .summary-grid .day-cell.has-people {
+      cursor: help;
+    }
+
+    .summary-grid .day-cell.has-people:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+
+    .heat-0 {
+      background: var(--sand);
+      color: var(--sand-dark);
+      border-color: transparent;
+    }
+    .heat-1 {
+      background: #fdf2e9;
+      color: #c27d3e;
+      border-color: #f5d5b3;
+    }
+    .heat-2 {
+      background: #fae5d3;
+      color: #b56e2e;
+      border-color: #f0c196;
+    }
+    .heat-3 {
+      background: #e8d8cb;
+      color: var(--coral);
+      border-color: var(--driftwood);
+    }
+    .heat-4 {
+      background: var(--coral-glow);
+      color: var(--white);
+      border-color: var(--coral-soft);
+    }
+    .heat-5 {
+      background: var(--coral);
+      color: var(--white);
+      border-color: var(--coral);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(212, 101, 74, 0.2);
+    }
+
+    .best-weekend {
+      background: var(--navy) !important;
+      color: var(--white) !important;
+      border-color: var(--navy) !important;
+      font-weight: 600;
+      box-shadow: 0 2px 10px rgba(12, 29, 54, 0.3) !important;
+    }
+
+    .availability-grid tbody tr.best-row {
+      background: rgba(12, 29, 54, 0.03);
+    }
+
+    .availability-grid tbody tr.best-row td:first-child {
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    /* ── Tooltip ── */
+    .tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--navy);
+      color: rgba(255,255,255,0.9);
+      padding: 0.4rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+      letter-spacing: 0.2px;
+      box-shadow: 0 4px 12px rgba(12, 29, 54, 0.25);
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--navy);
+    }
+
+    .day-cell:hover .tooltip {
+      display: block;
+      animation: fadeIn 0.15s ease;
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .empty-state strong {
+      display: block;
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--text-mid);
+      margin-bottom: 0.4rem;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
+      color: var(--driftwood);
+    }
+
+    /* ── Month Divider ── */
+    .month-divider td {
+      padding: 0.5rem 1.25rem 0.3rem !important;
+      border-bottom: none !important;
+    }
+
+    .month-label {
+      font-family: 'DM Serif Display', serif;
+      font-size: 0.85rem;
+      color: var(--atlantic);
+      font-weight: 400;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .hero { padding: 2rem 1.25rem 3.5rem; }
+      .hero h1 { font-size: 1.8rem; }
+      .container { padding: 1.25rem 1rem 2rem; }
+      .name-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+      }
+      .name-input-group { width: 100%; }
+      .name-input-group input { width: 100%; flex: 1; }
+      .people-tags { margin-left: 0; }
+      .day-cell { width: 58px; height: 34px; font-size: 0.72rem; }
+      .tab { padding: 0.55rem 1rem; font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-subtitle">Summer 2026</div>
+      <h1>Provincetown<br><em>Trip Planner</em></h1>
+      <div class="hero-date">May 16 &ndash; October 18 &middot; Pick your weekends</div>
+    </div>
+    <div class="wave-divider">
+      <svg viewBox="0 0 1200 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,24 C200,40 400,8 600,24 C800,40 1000,8 1200,24 L1200,40 L0,40 Z" fill="var(--sand)"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="name-section">
+      <label for="name-input">Your name</label>
+      <div class="name-input-group">
+        <input type="text" id="name-input" placeholder="Enter your name" autocomplete="off">
+        <button id="name-btn">Go</button>
+      </div>
+      <div class="people-tags" id="people-tags"></div>
+    </div>
+
+    <div id="best-banner" class="best-banner">
+      <h3>Best Weekends</h3>
+      <div class="best-list" id="best-list"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="my">My Availability</button>
+      <button class="tab" data-tab="summary">Group Summary</button>
+    </div>
+
+    <div class="grid-wrapper" id="my-view">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-state-icon">&#9968;</div>
+        <strong>Enter your name to get started</strong>
+        <p>Click on days to mark yourself as available.</p>
+      </div>
+      <table class="availability-grid" id="my-grid" style="display:none">
+        <thead>
+          <tr>
+            <th>Weekend</th>
+            <th>Fri</th>
+            <th>Sat</th>
+            <th>Sun</th>
+            <th>Mon</th>
+          </tr>
+        </thead>
+        <tbody id="my-grid-body"></tbody>
+      </table>
+    </div>
+
+    <div class="grid-wrapper" id="summary-view" style="display:none">
+      <table class="availability-grid summary-grid">
+        <thead>
+          <tr>
+            <th>Weekend</th>
+            <th>Fri</th>
+            <th>Sat</th>
+            <th>Sun</th>
+            <th>Mon</th>
+          </tr>
+        </thead>
+        <tbody id="summary-grid-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Generate weekends from May 16 to October 18, 2026
+    function getWeekends() {
+      const weekends = [];
+      let sat = new Date(2026, 4, 16);
+      const end = new Date(2026, 9, 18);
+
+      while (sat <= end) {
+        const fri = new Date(sat);
+        fri.setDate(fri.getDate() - 1);
+        const sun = new Date(sat);
+        sun.setDate(sun.getDate() + 1);
+        const mon = new Date(sat);
+        mon.setDate(mon.getDate() + 2);
+
+        weekends.push({
+          label: formatWeekendLabel(sat),
+          month: sat.toLocaleDateString("en-US", { month: "long" }),
+          days: [
+            { date: toDateStr(fri), label: formatDay(fri), dayName: "Fri" },
+            { date: toDateStr(sat), label: formatDay(sat), dayName: "Sat" },
+            { date: toDateStr(sun), label: formatDay(sun), dayName: "Sun" },
+            { date: toDateStr(mon), label: formatDay(mon), dayName: "Mon" },
+          ],
+        });
+
+        sat = new Date(sat);
+        sat.setDate(sat.getDate() + 7);
+      }
+      return weekends;
+    }
+
+    function toDateStr(d) {
+      return d.toISOString().slice(0, 10);
+    }
+
+    function formatDay(d) {
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function formatWeekendLabel(sat) {
+      const sun = new Date(sat);
+      sun.setDate(sun.getDate() + 1);
+      const sameMonth = sat.getMonth() === sun.getMonth();
+      if (sameMonth) {
+        return sat.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+          "\u2013" + sun.getDate();
+      }
+      return sat.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+        " \u2013 " + sun.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    const WEEKENDS = getWeekends();
+    let currentUser = localStorage.getItem("ptown-user") || "";
+    let allData = {};
+
+    const nameInput = document.getElementById("name-input");
+    const nameBtn = document.getElementById("name-btn");
+    const peopleTags = document.getElementById("people-tags");
+    const emptyState = document.getElementById("empty-state");
+    const myGrid = document.getElementById("my-grid");
+    const myGridBody = document.getElementById("my-grid-body");
+    const summaryGridBody = document.getElementById("summary-grid-body");
+    const bestBanner = document.getElementById("best-banner");
+    const bestList = document.getElementById("best-list");
+
+    // Tab switching
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        const which = tab.dataset.tab;
+        document.getElementById("my-view").style.display = which === "my" ? "" : "none";
+        document.getElementById("summary-view").style.display = which === "summary" ? "" : "none";
+      });
+    });
+
+    // Name entry
+    nameBtn.addEventListener("click", setUser);
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") setUser();
+    });
+
+    function setUser() {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      currentUser = name;
+      localStorage.setItem("ptown-user", name);
+      renderAll();
+    }
+
+    async function fetchData() {
+      const res = await fetch("/api/availability");
+      allData = await res.json();
+      renderAll();
+    }
+
+    async function toggle(date) {
+      if (!currentUser) return;
+      const res = await fetch("/api/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: currentUser, date }),
+      });
+      const data = await res.json();
+
+      if (!allData[currentUser]) allData[currentUser] = [];
+      if (data.toggled) {
+        allData[currentUser].push(date);
+      } else {
+        allData[currentUser] = allData[currentUser].filter((d) => d !== date);
+        if (allData[currentUser].length === 0) delete allData[currentUser];
+      }
+      renderAll();
+    }
+
+    function renderAll() {
+      renderPeopleTags();
+      renderMyGrid();
+      renderSummary();
+      renderBestBanner();
+    }
+
+    function renderPeopleTags() {
+      const people = Object.keys(allData).sort();
+      peopleTags.innerHTML = "";
+      for (const p of people) {
+        const tag = document.createElement("span");
+        tag.className = "person-tag" + (p === currentUser ? " active" : "");
+        tag.textContent = p;
+        tag.addEventListener("click", () => {
+          currentUser = p;
+          nameInput.value = p;
+          localStorage.setItem("ptown-user", p);
+          renderAll();
+        });
+        peopleTags.appendChild(tag);
+      }
+    }
+
+    function renderMyGrid() {
+      if (!currentUser) {
+        emptyState.style.display = "";
+        myGrid.style.display = "none";
+        return;
+      }
+      emptyState.style.display = "none";
+      myGrid.style.display = "";
+      nameInput.value = currentUser;
+
+      const myDates = new Set(allData[currentUser] || []);
+      myGridBody.innerHTML = "";
+
+      let lastMonth = "";
+      for (const weekend of WEEKENDS) {
+        // Month divider
+        if (weekend.month !== lastMonth) {
+          lastMonth = weekend.month;
+          const divRow = document.createElement("tr");
+          divRow.className = "month-divider";
+          const divTd = document.createElement("td");
+          divTd.colSpan = 5;
+          const monthSpan = document.createElement("span");
+          monthSpan.className = "month-label";
+          monthSpan.textContent = weekend.month;
+          divTd.appendChild(monthSpan);
+          divRow.appendChild(divTd);
+          myGridBody.appendChild(divRow);
+        }
+
+        const tr = document.createElement("tr");
+        const labelTd = document.createElement("td");
+        labelTd.textContent = weekend.label;
+        tr.appendChild(labelTd);
+
+        for (const day of weekend.days) {
+          const td = document.createElement("td");
+          const cell = document.createElement("div");
+          const isAvail = myDates.has(day.date);
+          cell.className = "day-cell" + (isAvail ? " available" : "");
+          cell.textContent = isAvail ? "\u2713" : day.label;
+          cell.addEventListener("click", () => toggle(day.date));
+          td.appendChild(cell);
+          tr.appendChild(td);
+        }
+        myGridBody.appendChild(tr);
+      }
+    }
+
+    function renderSummary() {
+      const people = Object.keys(allData);
+      const totalPeople = people.length;
+      summaryGridBody.innerHTML = "";
+
+      let maxCount = 0;
+      const weekendScores = [];
+
+      for (const weekend of WEEKENDS) {
+        let weekendTotal = 0;
+        const dayCounts = [];
+        for (const day of weekend.days) {
+          let count = 0;
+          const whoList = [];
+          for (const p of people) {
+            if (allData[p].includes(day.date)) {
+              count++;
+              whoList.push(p);
+            }
+          }
+          dayCounts.push({ count, who: whoList });
+          if (day.dayName === "Sat" || day.dayName === "Sun") {
+            weekendTotal += count;
+          }
+          if (count > maxCount) maxCount = count;
+        }
+        weekendScores.push({ weekend, dayCounts, score: weekendTotal });
+      }
+
+      const bestScore = Math.max(...weekendScores.map((w) => w.score));
+
+      let lastMonth = "";
+      for (const { weekend, dayCounts, score } of weekendScores) {
+        // Month divider
+        if (weekend.month !== lastMonth) {
+          lastMonth = weekend.month;
+          const divRow = document.createElement("tr");
+          divRow.className = "month-divider";
+          const divTd = document.createElement("td");
+          divTd.colSpan = 5;
+          const monthSpan = document.createElement("span");
+          monthSpan.className = "month-label";
+          monthSpan.textContent = weekend.month;
+          divTd.appendChild(monthSpan);
+          divRow.appendChild(divTd);
+          summaryGridBody.appendChild(divRow);
+        }
+
+        const isBest = score === bestScore && bestScore > 0;
+        const tr = document.createElement("tr");
+        if (isBest) tr.className = "best-row";
+
+        const labelTd = document.createElement("td");
+        labelTd.textContent = weekend.label;
+        tr.appendChild(labelTd);
+
+        for (let i = 0; i < weekend.days.length; i++) {
+          const day = weekend.days[i];
+          const { count, who } = dayCounts[i];
+          const td = document.createElement("td");
+          const cell = document.createElement("div");
+
+          const isSatSun = day.dayName === "Sat" || day.dayName === "Sun";
+          const heatClass = getHeatClass(count, totalPeople);
+          const isBestCell = isBest && isSatSun && count === totalPeople && totalPeople > 0;
+
+          cell.className = "day-cell " + heatClass + (count > 0 ? " has-people" : "") +
+            (isBestCell ? " best-weekend" : "");
+          cell.textContent = count > 0 ? count + "/" + totalPeople : "\u2014";
+
+          if (who.length > 0) {
+            const tooltip = document.createElement("div");
+            tooltip.className = "tooltip";
+            tooltip.textContent = who.join(", ");
+            cell.appendChild(tooltip);
+          }
+
+          td.appendChild(cell);
+          tr.appendChild(td);
+        }
+        summaryGridBody.appendChild(tr);
+      }
+    }
+
+    function getHeatClass(count, total) {
+      if (count === 0 || total === 0) return "heat-0";
+      const ratio = count / total;
+      if (ratio >= 1) return "heat-5";
+      if (ratio >= 0.75) return "heat-4";
+      if (ratio >= 0.5) return "heat-3";
+      if (ratio >= 0.25) return "heat-2";
+      return "heat-1";
+    }
+
+    function renderBestBanner() {
+      const people = Object.keys(allData);
+      if (people.length < 2) {
+        bestBanner.style.display = "none";
+        return;
+      }
+
+      const totalPeople = people.length;
+      const weekendResults = [];
+
+      for (const weekend of WEEKENDS) {
+        const satDate = weekend.days[1].date;
+        const sunDate = weekend.days[2].date;
+        let bothCount = 0;
+        const bothWho = [];
+        for (const p of people) {
+          const dates = allData[p];
+          if (dates.includes(satDate) && dates.includes(sunDate)) {
+            bothCount++;
+            bothWho.push(p);
+          }
+        }
+        if (bothCount > 0) {
+          weekendResults.push({
+            label: weekend.label,
+            count: bothCount,
+            who: bothWho,
+            fri: people.filter((p) => allData[p].includes(weekend.days[0].date)).length,
+            mon: people.filter((p) => allData[p].includes(weekend.days[3].date)).length,
+          });
+        }
+      }
+
+      weekendResults.sort((a, b) => b.count - a.count);
+      const top = weekendResults.slice(0, 3);
+
+      if (top.length === 0) {
+        bestBanner.style.display = "none";
+        return;
+      }
+
+      bestBanner.style.display = "";
+      bestList.innerHTML = top
+        .map((w) => {
+          let extra = "";
+          if (w.fri > 0) extra += ` (${w.fri} can do Fri`;
+          if (w.fri > 0 && w.mon > 0) extra += `, ${w.mon} can do Mon)`;
+          else if (w.fri > 0) extra += ")";
+          if (!w.fri && w.mon > 0) extra += ` (${w.mon} can do Mon)`;
+          return `<div><strong>${w.label}</strong> \u2014 ${w.count}/${totalPeople} available for Sat+Sun${extra}</div>`;
+        })
+        .join("");
+    }
+
+    // Init
+    if (currentUser) nameInput.value = currentUser;
+    fetchData();
+  </script>
+</body>
+</html>

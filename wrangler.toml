@@ -1,0 +1,13 @@
+name = "ptown-planner"
+main = "src/index.js"
+compatibility_date = "2025-12-01"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ptown-planner-db"
+database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
