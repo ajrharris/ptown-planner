@@ -441,6 +441,7 @@
       padding: 0.3rem;
       text-align: center;
       border-bottom: 1px solid var(--sand);
+      vertical-align: middle;
     }
 
     .availability-grid td:first-child {
@@ -449,8 +450,8 @@
       font-weight: 500;
       font-size: 0.85rem;
       color: var(--text-mid);
-      white-space: nowrap;
       letter-spacing: -0.1px;
+      vertical-align: middle;
     }
 
     .availability-grid tr:last-child td { border-bottom: none; }
@@ -604,6 +605,32 @@
     .availability-grid tbody tr.best-row td:first-child {
       color: var(--navy);
       font-weight: 600;
+    }
+
+    /* ── Event Links ── */
+    .weekend-label-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-height: 3.2rem;
+    }
+
+    .weekend-event {
+      font-size: 0.68rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      line-height: 1.2;
+    }
+
+    .weekend-event a {
+      color: var(--atlantic-light);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .weekend-event a:hover {
+      color: var(--atlantic);
+      text-decoration: underline;
     }
 
     /* ── Tooltip ── */
@@ -977,6 +1004,43 @@
   </div>
 
   <script>
+    // Event data for Provincetown 2026
+    // Events can be a single object or an array of events for weekends with multiple events
+    const EVENT_DATA = {
+      '2026-05-16': { name: 'Single Women\'s Weekend', url: 'https://ptowntourism.com/events/single-womens-weekend-2025/' },
+      '2026-05-23': { name: 'MEMDAY Weekend Women\'s Festival', url: 'https://ptowntourism.com/events/memday-weekend-womens-festival/' },
+      '2026-06-06': [
+        { name: 'Womxn of Color Weekend', url: 'https://ptowntourism.com/events/womxn-of-color-weekend/' },
+        { name: 'Provincetown PRIDE', url: 'https://ptowntourism.com/events/provincetown-pride/' }
+      ],
+      '2026-06-13': [
+        { name: 'CabaretFest', url: 'https://ptowntourism.com/events/cabaretfest-presents-a-sentimental-journey-featuring-the-american-songbook-of-the-30s-40s/' },
+        { name: 'Film Festival', url: 'https://ptowntourism.com/events/provincetown-international-film-festival-2/' }
+      ],
+      '2026-06-20': [
+        { name: 'FROLIC Weekend', url: 'https://ptowntourism.com/events/frolic-weekend-2/' },
+        { name: 'Juneteenth Provincetown', url: 'https://ptowntourism.com/events/juneteenth-ptown/' }
+      ],
+      '2026-06-27': { name: 'Portuguese Festival & Blessing of the Fleet', url: 'https://ptowntourism.com/events/provincetown-portuguese-festival-2/' },
+      '2026-07-11': { name: 'Bear Week', url: 'https://ptowntourism.com/events/bear-week-2/' },
+      '2026-07-18': { name: 'Bear Week', url: 'https://ptowntourism.com/events/bear-week-2/' },
+      '2026-07-25': [
+        { name: 'Girl Splash', url: 'https://ptowntourism.com/events/girl-splash/' },
+        { name: 'Family Week', url: 'https://ptowntourism.com/events/family-week-2/' }
+      ],
+      '2026-08-01': { name: 'Family Week', url: 'https://ptowntourism.com/events/family-week-2/' },
+      '2026-08-15': { name: 'Provincetown Carnival – Deep Sea Disco', url: 'https://ptowntourism.com/events/provincetown-carnival-summer-camp/' },
+      '2026-08-22': { name: 'Provincetown Carnival – Deep Sea Disco', url: 'https://ptowntourism.com/events/provincetown-carnival-summer-camp/' },
+      '2026-09-12': { name: 'Swim for Life & Annual Flotilla', url: 'https://ptowntourism.com/events/39th-swim-for-life-annual-flotilla/' },
+      '2026-09-19': { name: 'International Women\'s Flag Football Tournament', url: 'https://ptowntourism.com/events/international-womens-flag-football-tournament/' },
+      '2026-09-26': { name: 'Provincetown Book Festival', url: 'https://ptowntourism.com/events/provincetown-book-festival-3/' },
+      '2026-10-03': { name: 'Mates Leather Weekend', url: 'https://ptowntourism.com/events/mates-leather-weekend-3/' },
+      '2026-10-17': [
+        { name: 'Women\'s Week', url: 'https://ptowntourism.com/events/womens-week-3/' },
+        { name: 'TransWeek', url: 'https://ptowntourism.com/events/transweek2026/' }
+      ],
+    };
+
     // Generate weekends from May 16 to October 18, 2026
     function getWeekends() {
       const weekends = [];
@@ -991,9 +1055,13 @@
         const mon = new Date(sat);
         mon.setDate(mon.getDate() + 2);
 
+        const satDateStr = toDateStr(sat);
+        const event = EVENT_DATA[satDateStr] || null;
+
         weekends.push({
           label: formatWeekendLabel(sat),
           month: sat.toLocaleDateString("en-US", { month: "long" }),
+          event: event,
           days: [
             { date: toDateStr(fri), label: formatDay(fri), dayName: "Fri" },
             { date: toDateStr(sat), label: formatDay(sat), dayName: "Sat" },
@@ -1212,7 +1280,32 @@
 
         const tr = document.createElement("tr");
         const labelTd = document.createElement("td");
-        labelTd.textContent = weekend.label;
+
+        // Create wrapper for weekend label and event
+        const labelWrapper = document.createElement("div");
+        labelWrapper.className = "weekend-label-wrapper";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = weekend.label;
+        labelWrapper.appendChild(labelSpan);
+
+        // Add event information if available
+        if (weekend.event) {
+          const events = Array.isArray(weekend.event) ? weekend.event : [weekend.event];
+          events.forEach((event, index) => {
+            const eventDiv = document.createElement("div");
+            eventDiv.className = "weekend-event";
+            const eventLink = document.createElement("a");
+            eventLink.href = event.url;
+            eventLink.target = "_blank";
+            eventLink.rel = "noopener noreferrer";
+            eventLink.textContent = event.name;
+            eventDiv.appendChild(eventLink);
+            labelWrapper.appendChild(eventDiv);
+          });
+        }
+
+        labelTd.appendChild(labelWrapper);
         tr.appendChild(labelTd);
 
         for (const day of weekend.days) {
@@ -1306,7 +1399,32 @@
         if (isBest) tr.className = "best-row";
 
         const labelTd = document.createElement("td");
-        labelTd.textContent = weekend.label;
+
+        // Create wrapper for weekend label and event
+        const labelWrapper = document.createElement("div");
+        labelWrapper.className = "weekend-label-wrapper";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = weekend.label;
+        labelWrapper.appendChild(labelSpan);
+
+        // Add event information if available
+        if (weekend.event) {
+          const events = Array.isArray(weekend.event) ? weekend.event : [weekend.event];
+          events.forEach((event, index) => {
+            const eventDiv = document.createElement("div");
+            eventDiv.className = "weekend-event";
+            const eventLink = document.createElement("a");
+            eventLink.href = event.url;
+            eventLink.target = "_blank";
+            eventLink.rel = "noopener noreferrer";
+            eventLink.textContent = event.name;
+            eventDiv.appendChild(eventLink);
+            labelWrapper.appendChild(eventDiv);
+          });
+        }
+
+        labelTd.appendChild(labelWrapper);
         tr.appendChild(labelTd);
 
         for (let i = 0; i < weekend.days.length; i++) {
