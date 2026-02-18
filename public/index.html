@@ -834,7 +834,74 @@
       font-size: 0.78rem;
       color: var(--text-muted);
       line-height: 1.45;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .hotel-price {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--coral);
+      margin-bottom: 0.6rem;
+      min-height: 1.3em;
+    }
+
+    .hotel-price .per-night {
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .hotel-price .total {
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-left: 0.3rem;
+    }
+
+    .hotel-price.loading {
+      color: var(--driftwood);
+      font-weight: 400;
+      font-size: 0.78rem;
+    }
+
+    .hotel-price.loading .loading-dots::after {
+      content: '';
+      animation: loadDots 1.4s steps(4, end) infinite;
+    }
+
+    @keyframes loadDots {
+      0% { content: ''; }
+      25% { content: '.'; }
+      50% { content: '..'; }
+      75% { content: '...'; }
+    }
+
+    .hotel-price.unavailable {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.75rem;
+      font-style: italic;
+    }
+
+    .hotel-price.price-range {
+      font-size: 0.85rem;
+    }
+
+    .weekend-price-summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      background: rgba(212, 101, 74, 0.1);
+      color: var(--coral);
+    }
+
+    .weekend-price-summary.loading {
+      background: rgba(184, 169, 148, 0.15);
+      color: var(--driftwood);
     }
 
     .hotel-links {
@@ -1873,6 +1940,9 @@
         .join("");
     }
 
+    // Client-side cache for fetched hotel prices
+    const hotelPriceCache = {};
+
     function renderHotels() {
       const hotelsContent = document.getElementById("hotels-content");
       const people = Object.keys(allData);
@@ -1917,6 +1987,7 @@
         const satDate = weekend.days[1].date;
         const monDate = weekend.days[3].date;
         const friDate = weekend.days[0].date;
+        const cacheKey = satDate + '_' + monDate;
 
         // Check how many can do Fri and Mon
         const friCount = people.filter(function(p) { return allData[p][friDate] === 'confirmed'; }).length;
@@ -1930,7 +2001,7 @@
         const bookingUrl = 'https://www.booking.com/searchresults.html?ss=Provincetown%2C+Massachusetts&checkin=' +
           satDate + '&checkout=' + monDate + '&group_adults=2&no_rooms=1';
 
-        html += '<div class="weekend-section">';
+        html += '<div class="weekend-section" data-weekend="' + cacheKey + '">';
         html += '<div class="weekend-section-header">';
         html += '<h3>' + weekend.label + '</h3>';
         html += '<span class="weekend-section-meta">' + meta + '</span>';
@@ -1940,6 +2011,17 @@
           for (const ev of events) {
             html += '<span class="weekend-section-event">' + ev.name + '</span>';
           }
+        }
+
+        // Price summary badge (loading initially)
+        const cached = hotelPriceCache[cacheKey];
+        if (cached && cached.length > 0) {
+          const range = getPriceRange(cached);
+          if (range) {
+            html += '<span class="weekend-price-summary">From $' + range.min + '/night</span>';
+          }
+        } else {
+          html += '<span class="weekend-price-summary loading" data-price-summary="' + cacheKey + '">Loading prices<span class="loading-dots"></span></span>';
         }
 
         html += '<a class="weekend-search-all" href="' + bookingUrl + '" target="_blank" rel="noopener noreferrer">' +
@@ -1953,17 +2035,34 @@
             encodeURIComponent(hotel.name + ', Provincetown') +
             '&checkin=' + satDate + '&checkout=' + monDate + '&group_adults=2&no_rooms=1';
 
-          html += '<div class="hotel-card">';
+          html += '<div class="hotel-card" data-hotel-name="' + escapeAttr(hotel.name) + '" data-weekend="' + cacheKey + '">';
           html += '<div class="hotel-card-header">';
           html += '<span class="hotel-name">' + hotel.name + '</span>';
           html += '<span class="hotel-type">' + hotel.type + '</span>';
           html += '</div>';
           html += '<div class="hotel-description">' + hotel.description + '</div>';
+
+          // Price display
+          const matchedPrice = cached ? matchHotelPrice(hotel.name, cached) : null;
+          if (cached) {
+            if (matchedPrice) {
+              html += '<div class="hotel-price">$' + matchedPrice.pricePerNight + '<span class="per-night">/night</span>';
+              if (matchedPrice.nights > 1) {
+                html += '<span class="total">($' + matchedPrice.totalPrice + ' total for ' + matchedPrice.nights + ' nights)</span>';
+              }
+              html += '</div>';
+            } else {
+              html += '<div class="hotel-price unavailable">Price not found &mdash; check link below</div>';
+            }
+          } else {
+            html += '<div class="hotel-price loading" data-price-for="' + escapeAttr(hotel.name) + '" data-price-weekend="' + cacheKey + '">Checking price<span class="loading-dots"></span></div>';
+          }
+
           html += '<div class="hotel-links">';
           html += '<a class="hotel-link primary" href="' + hotelSearchUrl +
-            '" target="_blank" rel="noopener noreferrer">Check Prices</a>';
+            '" target="_blank" rel="noopener noreferrer">View on Booking.com</a>';
           html += '<a class="hotel-link secondary" href="' + hotel.website +
-            '" target="_blank" rel="noopener noreferrer">Website</a>';
+            '" target="_blank" rel="noopener noreferrer">Hotel Website</a>';
           html += '</div>';
           html += '</div>';
         }
@@ -1972,6 +2071,136 @@
       }
 
       hotelsContent.innerHTML = html;
+
+      // Fetch prices for each weekend that isn't cached yet
+      for (const weekend of availableWeekends) {
+        const satDate = weekend.days[1].date;
+        const monDate = weekend.days[3].date;
+        const cacheKey = satDate + '_' + monDate;
+        if (!hotelPriceCache[cacheKey]) {
+          fetchHotelPrices(satDate, monDate, cacheKey);
+        }
+      }
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
+    }
+
+    async function fetchHotelPrices(checkin, checkout, cacheKey) {
+      try {
+        const res = await fetch('/api/hotel-prices?checkin=' + checkin + '&checkout=' + checkout);
+        if (!res.ok) throw new Error('API error');
+        const prices = await res.json();
+        hotelPriceCache[cacheKey] = prices;
+        updatePriceDisplay(cacheKey, prices);
+      } catch (error) {
+        hotelPriceCache[cacheKey] = [];
+        updatePriceDisplay(cacheKey, []);
+      }
+    }
+
+    function updatePriceDisplay(cacheKey, prices) {
+      // Update the price summary badge
+      const summaryEl = document.querySelector('[data-price-summary="' + cacheKey + '"]');
+      if (summaryEl) {
+        const range = getPriceRange(prices);
+        if (range) {
+          summaryEl.className = 'weekend-price-summary';
+          summaryEl.textContent = 'From $' + range.min + '/night';
+        } else {
+          summaryEl.remove();
+        }
+      }
+
+      // Update individual hotel price displays
+      const priceEls = document.querySelectorAll('[data-price-weekend="' + cacheKey + '"]');
+      priceEls.forEach(function(el) {
+        const hotelName = el.getAttribute('data-price-for');
+        const matched = matchHotelPrice(hotelName, prices);
+        if (matched) {
+          el.className = 'hotel-price';
+          el.innerHTML = '$' + matched.pricePerNight + '<span class="per-night">/night</span>' +
+            (matched.nights > 1 ? '<span class="total">($' + matched.totalPrice + ' total for ' + matched.nights + ' nights)</span>' : '');
+        } else {
+          // Check for general price range
+          const rangeData = prices.find(function(p) { return p.name === '_price_range'; });
+          if (rangeData) {
+            el.className = 'hotel-price price-range';
+            el.innerHTML = '<span class="per-night">Area hotels from </span>$' + (rangeData.pricePerNight || rangeData.price) + '<span class="per-night">/night</span>';
+          } else {
+            el.className = 'hotel-price unavailable';
+            el.textContent = 'Price not found \u2014 check link below';
+          }
+        }
+      });
+    }
+
+    function matchHotelPrice(hotelName, prices) {
+      if (!prices || prices.length === 0) return null;
+
+      const normalize = function(s) {
+        return s.toLowerCase()
+          .replace(/['']/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      const target = normalize(hotelName);
+      const targetWords = target.split(' ').filter(function(w) { return w.length > 2; });
+
+      let bestMatch = null;
+      let bestScore = 0;
+
+      for (const price of prices) {
+        if (price.name === '_price_range') continue;
+        const candidate = normalize(price.name);
+
+        // Exact match
+        if (target === candidate) return price;
+
+        // One contains the other
+        if (target.includes(candidate) || candidate.includes(target)) return price;
+
+        // Word overlap scoring
+        const candidateWords = candidate.split(' ').filter(function(w) { return w.length > 2; });
+        let matchedWords = 0;
+        for (const tw of targetWords) {
+          for (const cw of candidateWords) {
+            if (tw === cw || tw.includes(cw) || cw.includes(tw)) {
+              matchedWords++;
+              break;
+            }
+          }
+        }
+
+        const score = matchedWords / Math.max(targetWords.length, candidateWords.length);
+        if (score > bestScore && score >= 0.5) {
+          bestScore = score;
+          bestMatch = price;
+        }
+      }
+
+      return bestMatch;
+    }
+
+    function getPriceRange(prices) {
+      if (!prices || prices.length === 0) return null;
+
+      const rangeMeta = prices.find(function(p) { return p.name === '_price_range'; });
+      const hotelPrices = prices.filter(function(p) { return p.name !== '_price_range' && p.pricePerNight; });
+
+      if (hotelPrices.length > 0) {
+        const perNight = hotelPrices.map(function(p) { return p.pricePerNight; }).sort(function(a, b) { return a - b; });
+        return { min: perNight[0], max: perNight[perNight.length - 1], count: hotelPrices.length };
+      }
+
+      if (rangeMeta) {
+        return { min: rangeMeta.pricePerNight || rangeMeta.price, max: rangeMeta.priceMax, count: rangeMeta.count || 0 };
+      }
+
+      return null;
     }
 
     // Init
