@@ -33,6 +33,11 @@ export default {
     if (pathname === "/api/availability" && method === "POST") {
       return handleSetAvailability(request, env.DB);
     }
+    if (pathname === "/api/hotel-prices" && method === "GET") {
+      const checkin = url.searchParams.get("checkin");
+      const checkout = url.searchParams.get("checkout");
+      return handleHotelPrices(checkin, checkout, env.DB);
+    }
 
     // Serve the HTML app for everything else
     return new Response(HTML, {
@@ -389,4 +394,175 @@ async function handleSetAvailability(request, db) {
   }
   await db.batch(stmts);
   return json({ ok: true });
+}
+
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+async function handleHotelPrices(checkin, checkout, db) {
+  if (!checkin || !checkout) {
+    return json({ error: "checkin and checkout required" }, 400);
+  }
+
+  // Validate date format
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkin) || !/^\d{4}-\d{2}-\d{2}$/.test(checkout)) {
+    return json({ error: "dates must be YYYY-MM-DD" }, 400);
+  }
+
+  const cacheKey = `prices_${checkin}_${checkout}`;
+
+  // Ensure cache table exists
+  try {
+    await db.prepare(
+      "CREATE TABLE IF NOT EXISTS hotel_price_cache (cache_key TEXT PRIMARY KEY, data TEXT NOT NULL, fetched_at INTEGER NOT NULL)"
+    ).run();
+  } catch (e) {
+    // Table likely already exists
+  }
+
+  // Check cache
+  try {
+    const cached = await db
+      .prepare("SELECT data, fetched_at FROM hotel_price_cache WHERE cache_key = ?")
+      .bind(cacheKey)
+      .first();
+
+    if (cached && (Date.now() - cached.fetched_at) < CACHE_TTL_MS) {
+      return json(JSON.parse(cached.data));
+    }
+  } catch (e) {
+    // Cache miss, continue to fetch
+  }
+
+  // Fetch fresh prices
+  try {
+    const prices = await fetchHotelPrices(checkin, checkout);
+
+    // Store in cache
+    try {
+      await db
+        .prepare("INSERT OR REPLACE INTO hotel_price_cache (cache_key, data, fetched_at) VALUES (?, ?, ?)")
+        .bind(cacheKey, JSON.stringify(prices), Date.now())
+        .run();
+    } catch (e) {
+      // Cache write failed, that's okay
+    }
+
+    return json(prices);
+  } catch (error) {
+    return json([]);
+  }
+}
+
+async function fetchHotelPrices(checkin, checkout) {
+  const searchUrl = `https://www.booking.com/searchresults.html?ss=Provincetown%2C+Massachusetts%2C+United+States&checkin=${checkin}&checkout=${checkout}&group_adults=2&no_rooms=1&selected_currency=USD`;
+
+  const response = await fetch(searchUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    cf: { cacheTtl: 3600 },
+  });
+
+  if (!response.ok) return [];
+
+  const html = await response.text();
+  return parseHotelPrices(html, checkin, checkout);
+}
+
+function parseHotelPrices(html, checkin, checkout) {
+  const results = [];
+
+  // Strategy 1: Parse JSON-LD structured data (most reliable)
+  const jsonLdBlocks = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || [];
+  for (const block of jsonLdBlocks) {
+    try {
+      const jsonStr = block.replace(/<script type="application\/ld\+json">/, "").replace(/<\/script>/, "");
+      const data = JSON.parse(jsonStr);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        if (item["@type"] === "Hotel" && item.name) {
+          let price = null;
+          if (item.offers) {
+            const offer = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+            price = parseFloat(offer.price || offer.lowPrice || 0) || null;
+          }
+          if (item.name && price) {
+            results.push({
+              name: item.name,
+              price: price,
+              currency: (item.offers && (Array.isArray(item.offers) ? item.offers[0] : item.offers).priceCurrency) || "USD",
+              rating: item.starRating || item.aggregateRating?.ratingValue || null,
+              reviewScore: item.aggregateRating?.ratingValue || null,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Skip malformed JSON-LD
+    }
+  }
+
+  // Strategy 2: Parse property cards from HTML (fallback)
+  if (results.length === 0) {
+    // Look for price patterns near hotel name patterns
+    // Booking.com often includes data in attributes like data-price or aria-label with price
+    const priceBlocks = html.match(/data-testid="property-card"[\s\S]*?(?=data-testid="property-card"|$)/g) || [];
+    for (const block of priceBlocks) {
+      const nameMatch = block.match(/data-testid="title"[^>]*>([^<]+)/);
+      const priceMatch = block.match(/data-testid="price-and-discounted-price"[^>]*>[\s\S]*?\$([\d,]+)/) ||
+                          block.match(/\bUS\$\s*([\d,]+)/) ||
+                          block.match(/\$\s*([\d,]+)/);
+      if (nameMatch && priceMatch) {
+        results.push({
+          name: nameMatch[1].trim(),
+          price: parseFloat(priceMatch[1].replace(/,/g, "")),
+          currency: "USD",
+          rating: null,
+          reviewScore: null,
+        });
+      }
+    }
+  }
+
+  // Strategy 3: Broader regex scan for any hotel-price pairs
+  if (results.length === 0) {
+    // Try to find any price mentions in the page
+    const allPrices = [];
+    const priceRegex = /(?:US)?\$\s*([\d,]+)/g;
+    let match;
+    while ((match = priceRegex.exec(html)) !== null) {
+      const price = parseFloat(match[1].replace(/,/g, ""));
+      if (price >= 50 && price <= 5000) {
+        allPrices.push(price);
+      }
+    }
+    // If we found reasonable prices, return them as a general price range
+    if (allPrices.length > 0) {
+      allPrices.sort((a, b) => a - b);
+      results.push({
+        name: "_price_range",
+        price: allPrices[0],
+        priceMax: allPrices[allPrices.length - 1],
+        currency: "USD",
+        count: allPrices.length,
+      });
+    }
+  }
+
+  // Calculate per-night price if the stay is multiple nights
+  const nights = Math.max(1, Math.round((new Date(checkout) - new Date(checkin)) / (1000 * 60 * 60 * 24)));
+  for (const r of results) {
+    if (r.price && nights > 1) {
+      r.pricePerNight = Math.round(r.price / nights);
+      r.totalPrice = r.price;
+      r.nights = nights;
+    } else {
+      r.pricePerNight = r.price;
+      r.nights = nights;
+    }
+  }
+
+  return results;
 }
